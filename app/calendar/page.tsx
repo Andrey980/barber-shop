@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 
@@ -27,7 +27,7 @@ const generateTimeSlots = () => {
 
 const timeSlots = generateTimeSlots();
 
-export default function CalendarPage() {
+function CalendarContent() {
   const searchParams = useSearchParams();
   const serviceId = searchParams.get('service');
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -107,5 +107,17 @@ export default function CalendarPage() {
         </Link>
       )}
     </div>
+  );
+}
+
+export default function CalendarPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-900 text-white p-4 flex items-center justify-center">
+        <p>Carregando...</p>
+      </div>
+    }>
+      <CalendarContent />
+    </Suspense>
   );
 }
