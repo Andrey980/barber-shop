@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 
@@ -15,7 +15,7 @@ const services: Record<string, ServiceType> = {
   '3': { name: 'Progressiva', price: 'R$ 200' }
 };
 
-export default function ConfirmationPage() {
+function ConfirmationContent() {
   const searchParams = useSearchParams();
   const serviceId = searchParams.get('service');
   const date = searchParams.get('date');
@@ -49,19 +49,18 @@ export default function ConfirmationPage() {
             <p className="text-gray-400">Data</p>
             <p className="font-semibold">
               {date && new Date(date).toLocaleDateString('pt-BR', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
               })}
             </p>
           </div>
-          
+
           <div>
             <p className="text-gray-400">Horário</p>
             <p className="font-semibold">{time}</p>
           </div>
-          
+
           <div>
             <p className="text-gray-400">Valor</p>
             <p className="font-semibold text-purple-500">{service?.price}</p>
@@ -69,13 +68,23 @@ export default function ConfirmationPage() {
         </div>
       </div>
 
-      {/* Return to Home Button */}
-      <Link
-        href="/"
-        className="block w-full bg-purple-500 text-white py-4 px-6 rounded-lg text-center font-semibold"
-      >
-        Voltar para o Início
+      {/* Return Button */}
+      <Link href="/" 
+        className="block w-full bg-purple-500 text-white text-center py-4 rounded-lg hover:bg-purple-600 transition-colors">
+        Voltar para Home
       </Link>
     </div>
+  );
+}
+
+export default function ConfirmationPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-900 text-white p-4 flex items-center justify-center">
+        <p>Carregando...</p>
+      </div>
+    }>
+      <ConfirmationContent />
+    </Suspense>
   );
 }
