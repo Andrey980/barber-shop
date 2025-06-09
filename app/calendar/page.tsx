@@ -44,7 +44,7 @@ function CalendarContent() {
     <div className="min-h-screen bg-gray-900 text-white p-4">
       {/* Header */}
       <header className="flex items-center mb-8">
-        <Link href="/services" className="mr-4">
+        <Link href="/" className="mr-4">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
@@ -103,7 +103,7 @@ function CalendarContent() {
           href={`/confirmation?service=${serviceId}&date=${selectedDate}&time=${selectedTime}`}
           className="fixed bottom-4 left-4 right-4 bg-purple-500 text-white py-4 px-6 rounded-lg text-center font-semibold"
         >
-          Confirmar Agendamento
+          Revisar Agendamento
         </Link>
       )}
     </div>

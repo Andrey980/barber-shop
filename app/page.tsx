@@ -1,17 +1,45 @@
-// import Image from "next/image";
-import Link from "next/link";
+'use client';
 
-interface ServiceType {
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { getServices } from "./services/api";
+
+interface Service {
+  id: string;
   name: string;
+  description: string;
   price: string;
+  duration: string;
 }
 
 export default function Home() {
-  const services: Record<string, ServiceType> = {
-    "1": { name: "Corte", price: "R$ 50" },
-    "2": { name: "Luzes", price: "R$ 150" },
-    "3": { name: "Progressiva", price: "R$ 200" },
-  };
+  const [services, setServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        const data = await getServices();
+        setServices(data);
+      } catch (err) {
+        setError('Falha ao carregar os serviços. Por favor, tente novamente mais tarde.');
+        console.error('Error fetching services:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchServices();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-900 text-white p-4 flex items-center justify-center">
+        <p>Carregando serviços...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-4">
@@ -20,7 +48,10 @@ export default function Home() {
         <div className="flex items-center">
           <h1 className="text-2xl font-bold text-purple-500">GF3W BARBER</h1>
         </div>
-        <button className="text-gray-400">
+        <Link 
+          href="/dashboard" 
+          className="text-gray-400 hover:text-purple-500 transition-colors"
+        >
           <svg
             xmlns="http://www.w3.org/2000/svg"
             className="h-6 w-6"
@@ -35,8 +66,15 @@ export default function Home() {
               d="M4 6h16M4 12h16M4 18h16"
             />
           </svg>
-        </button>
+        </Link>
       </header>
+
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-500 text-white p-4 rounded-lg mb-4">
+          {error}
+        </div>
+      )}
 
       {/* Welcome Section */}
       <section className="mb-8">
@@ -47,15 +85,17 @@ export default function Home() {
       <section className="mb-8">
         <h3 className="text-lg font-semibold mb-4">SERVIÇOS DISPONÍVEIS</h3>
         <div className="grid gap-4">
-          {Object.entries(services).map(([id, service]) => (
-            <Link href={`/calendar?service=${id}`} key={id} className="block">
+          {services.map((service) => (
+            <Link href={`/calendar?service=${service.id}`} key={service.id} className="block">
               <div className="bg-gray-800 rounded-lg p-4 transition-transform transform hover:scale-105">
                 <div className="flex justify-between items-center">
                   <div>
                     <h4 className="font-semibold">{service.name}</h4>
+                    <p className="text-sm text-gray-400">{service.description}</p>
+                    <p className="text-xs text-gray-500 mt-1">Duração: {service.duration} min</p>
                   </div>
                   <div className="text-purple-500 font-semibold">
-                    {service.price}
+                    R$ {service.price}
                   </div>
                 </div>
               </div>
