@@ -12,6 +12,11 @@ interface Service {
   duration: string;
 }
 
+interface ApiError {
+  message: string;
+  status?: number;
+}
+
 export default function DashboardPage() {
   const [services, setServices] = useState<Service[]>([]);
   const [newService, setNewService] = useState({
@@ -58,10 +63,10 @@ export default function DashboardPage() {
         await createService(newServiceData);
         await fetchServices();
         setNewService({ name: '', description: '', price: '', duration: '' });
-        setIsAddingService(false);
-      } catch (err: any) {
-        setError(err.message || 'Falha ao adicionar o serviço. Tente novamente.');
-        console.error('Error adding service:', err);
+        setIsAddingService(false);      } catch (err) {
+        const error = err as ApiError;
+        setError(error.message || 'Falha ao adicionar o serviço. Tente novamente.');
+        console.error('Error adding service:', error);
       }
     } else {
       setError('Por favor, preencha todos os campos obrigatórios.');
@@ -86,10 +91,10 @@ export default function DashboardPage() {
 
         await updateService(editingService.id, updatedServiceData);
         await fetchServices();
-        setEditingService(null);
-      } catch (err: any) {
-        setError(err.message || 'Falha ao atualizar o serviço. Tente novamente.');
-        console.error('Error updating service:', err);
+        setEditingService(null);      } catch (err) {
+        const error = err as ApiError;
+        setError(error.message || 'Falha ao atualizar o serviço. Tente novamente.');
+        console.error('Error updating service:', error);
       }
     } else {
       setError('Por favor, preencha todos os campos obrigatórios.');

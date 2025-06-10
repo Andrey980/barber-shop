@@ -1,3 +1,8 @@
+interface ApiError {
+  message: string;
+  status?: number;
+}
+
 interface Service {
   id: string;
   name: string;
@@ -86,10 +91,10 @@ export const updateService = async (id: string, service: Omit<Service, 'id'>): P
     }
     
     const updatedService = await response.json();
-    return updatedService;
-  } catch (error: any) {
-    console.error('Error updating service:', error);
-    throw new Error(error.message || 'Failed to update service');
+    return updatedService;  } catch (error) {
+    const apiError = error as ApiError;
+    console.error('Error updating service:', apiError);
+    throw new Error(apiError.message || 'Failed to update service');
   }
 };
 
@@ -108,10 +113,10 @@ export const createAppointment = async (appointment: Omit<Appointment, 'id'>): P
       throw new Error(errorData.message || 'Failed to create appointment');
     }
     
-    return response.json();
-  } catch (error: any) {
-    console.error('Error creating appointment:', error);
-    throw new Error(error.message || 'Failed to create appointment');
+    return response.json();  } catch (error) {
+    const apiError = error as ApiError;
+    console.error('Error creating appointment:', apiError);
+    throw new Error(apiError.message || 'Failed to create appointment');
   }
 };
 
