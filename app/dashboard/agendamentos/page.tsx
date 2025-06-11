@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { getAppointmentsByDate, getDaysWithAppointments } from '../../services/api';
+import { getAppointmentsByDate, getDaysWithAppointments, updateAppointment, getServiceById } from '../../services/api';
 
 interface Appointment {
   id: string;
@@ -10,12 +10,152 @@ interface Appointment {
   service_id: string;
   appointment_date: string;
   status: string;
+  total_value?: string;
   service?: {
     name: string;
     price: string;
     duration: string;
   };
 }
+
+interface EditModalProps {
+  appointment: Appointment;
+  onClose: () => void;
+  onSave: (appointment: Appointment) => Promise<void>;
+}
+
+const EditModal: React.FC<EditModalProps> = ({ appointment, onClose, onSave }) => {
+  const [status, setStatus] = useState(appointment.status);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Ajustar o timezone para exibir corretamente
+  const appointmentDate = new Date(appointment.appointment_date);
+  const initialDate = appointmentDate.toISOString().split('T')[0];
+  const initialTime = appointmentDate.toLocaleTimeString('pt-BR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+
+  const [date, setDate] = useState(initialDate);
+  const [time, setTime] = useState(initialTime);
+  const [totalValue, setTotalValue] = useState(appointment.total_value || appointment.service?.price || '');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      // Criar data com timezone correto
+      const [hours, minutes] = time.split(':');
+      const newDate = new Date(date);
+      newDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+      
+      const updatedAppointment = {
+        ...appointment,
+        status,
+        appointment_date: newDate.toISOString(),
+        ...(status === 'completed' && { total_value: totalValue })
+      };
+      await onSave(updatedAppointment);
+      onClose();
+    } catch (error) {
+      console.error('Erro ao atualizar agendamento:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+      <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full">
+        <h2 className="text-xl font-semibold mb-4">Editar Agendamento</h2>
+        
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-2">Cliente</label>
+            <p className="text-gray-400">{appointment.client_name}</p>
+          </div>
+          
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-2">Serviço</label>
+            <p className="text-gray-400">{appointment.service?.name}</p>
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-2">Data</label>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2"
+              min={new Date().toISOString().split('T')[0]}
+            />
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-2">Horário</label>
+            <input
+              type="time"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+              className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2"
+            />
+          </div>
+          
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-2">Status</label>
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+              className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2"
+            >
+              <option value="scheduled">Agendado</option>
+              <option value="completed">Concluído</option>
+              <option value="canceled">Cancelado</option>
+            </select>
+          </div>
+
+          {status === 'completed' && (
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2">Valor Total</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">R$ </span>
+                <input
+                  type="text"
+                  value={totalValue}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^0-9.,]/g, '');
+                    setTotalValue(value);
+                  }}
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 pl-8"
+                  placeholder="0,00"
+                />
+              </div>
+            </div>
+          )}
+          
+          <div className="flex justify-end gap-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white"
+              disabled={isLoading}
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 text-sm font-medium bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:opacity-50"
+              disabled={isLoading}
+            >
+              {isLoading ? 'Salvando...' : 'Salvar'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
 
 export default function AppointmentsPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -26,6 +166,7 @@ export default function AppointmentsPage() {
   );
   const [daysWithAppointments, setDaysWithAppointments] = useState<string[]>([]);
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
 
   useEffect(() => {
     const fetchMonthAppointments = async () => {
@@ -45,15 +186,32 @@ export default function AppointmentsPage() {
     fetchMonthAppointments();
   }, [currentMonth]);
 
-  useEffect(() => {
-    fetchAppointments();
-  }, [selectedDate]);
-
-  const fetchAppointments = async () => {
+  const fetchAppointments = useCallback(async () => {
     try {
       setLoading(true);
       const data = await getAppointmentsByDate(selectedDate);
-      setAppointments(data);
+      
+      // Fetch service details for each appointment
+      const appointmentsWithServices = await Promise.all(
+        data.map(async (appointment) => {
+          try {
+            const service = await getServiceById(appointment.service_id);
+            return {
+              ...appointment,
+              service: {
+                name: service.name,
+                price: service.price,
+                duration: service.duration
+              }
+            };
+          } catch (error) {
+            console.error(`Error fetching service for appointment ${appointment.id}:`, error);
+            return appointment;
+          }
+        })
+      );
+
+      setAppointments(appointmentsWithServices);
       setError(null);
     } catch (err) {
       setError('Falha ao carregar os agendamentos. Tente novamente mais tarde.');
@@ -61,7 +219,11 @@ export default function AppointmentsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedDate]);
+
+  useEffect(() => {
+    fetchAppointments();
+  }, [fetchAppointments]);
 
   const formatDateTime = (dateTimeStr: string) => {
     const date = new Date(dateTimeStr);
@@ -69,6 +231,30 @@ export default function AppointmentsPage() {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  const handleEditAppointment = async (updatedAppointment: Appointment) => {
+    try {
+      await updateAppointment(updatedAppointment.id, updatedAppointment);
+      
+      // Buscar os detalhes do serviço novamente e atualizar o appointment com o valor total
+      const service = await getServiceById(updatedAppointment.service_id);
+      const appointmentWithService = {
+        ...updatedAppointment,
+        service: {
+          name: service.name,
+          price: updatedAppointment.total_value || service.price,
+          duration: service.duration
+        }
+      };
+
+      setAppointments(appointments.map(app => 
+        app.id === updatedAppointment.id ? appointmentWithService : app
+      ));
+    } catch (error) {
+      setError('Falha ao atualizar o agendamento. Tente novamente mais tarde.');
+      console.error('Error updating appointment:', error);
+    }
   };
 
   if (loading) {
@@ -178,12 +364,13 @@ export default function AppointmentsPage() {
                 <th className="pb-4">Duração</th>
                 <th className="pb-4">Valor</th>
                 <th className="pb-4">Status</th>
+                <th className="pb-4">Ações</th>
               </tr>
             </thead>
             <tbody>
               {appointments.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-4 text-center text-gray-400">
+                  <td colSpan={7} className="py-4 text-center text-gray-400">
                     Nenhum agendamento encontrado para esta data.
                   </td>
                 </tr>
@@ -191,10 +378,9 @@ export default function AppointmentsPage() {
                 appointments.map((appointment) => (
                   <tr key={appointment.id} className="border-b border-gray-700">
                     <td className="py-4">{formatDateTime(appointment.appointment_date)}</td>
-                    <td className="py-4">{appointment.client_name}</td>
-                    <td className="py-4">{appointment.service?.name}</td>
+                    <td className="py-4">{appointment.client_name}</td>                    <td className="py-4">{appointment.service?.name}</td>
                     <td className="py-4">{appointment.service?.duration} min</td>
-                    <td className="py-4">R$ {appointment.service?.price}</td>
+                    <td className="py-4">R$ {appointment.total_value || appointment.service?.price}</td>
                     <td className="py-4">
                       <span className={`px-2 py-1 rounded-full text-sm ${
                         appointment.status === 'scheduled' ? 'bg-blue-500' :
@@ -208,6 +394,14 @@ export default function AppointmentsPage() {
                          appointment.status}
                       </span>
                     </td>
+                    <td className="py-4">
+                      <button
+                        onClick={() => setEditingAppointment(appointment)}
+                        className="text-sm text-purple-500 hover:text-purple-400"
+                      >
+                        Editar
+                      </button>
+                    </td>
                   </tr>
                 ))
               )}
@@ -215,6 +409,14 @@ export default function AppointmentsPage() {
           </table>
         </div>
       </div>
+
+      {editingAppointment && (
+        <EditModal
+          appointment={editingAppointment}
+          onClose={() => setEditingAppointment(null)}
+          onSave={handleEditAppointment}
+        />
+      )}
     </div>
   );
 }

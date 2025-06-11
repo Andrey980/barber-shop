@@ -25,6 +25,7 @@ export interface Appointment {
 }
 
 const API_URL = 'http://localhost:8080/api';
+// const API_URL = 'https://barber-shop-backend-production.up.railway.app/api';
 
 export const getServices = async (): Promise<Service[]> => {
   try {
@@ -169,5 +170,28 @@ export const getAppointmentsByDate = async (date: string): Promise<Appointment[]
   } catch (error) {
     console.error('Error fetching appointments:', error);
     throw error;
+  }
+};
+
+export const updateAppointment = async (id: string, appointment: Partial<Appointment>): Promise<Appointment> => {
+  try {
+    const response = await fetch(`${API_URL}/appointments/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(appointment),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: 'Falha ao atualizar agendamento' }));
+      throw new Error(errorData.message || 'Falha ao atualizar agendamento');
+    }
+    
+    return response.json();
+  } catch (error) {
+    const apiError = error as ApiError;
+    console.error('Error updating appointment:', apiError);
+    throw new Error(apiError.message || 'Falha ao atualizar agendamento');
   }
 };
