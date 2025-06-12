@@ -22,38 +22,37 @@ interface EditModalProps {
   appointment: Appointment;
   onClose: () => void;
   onSave: (appointment: Appointment) => Promise<void>;
-}
+} 
 
 const EditModal: React.FC<EditModalProps> = ({ appointment, onClose, onSave }) => {
   const [status, setStatus] = useState(appointment.status);
   const [isLoading, setIsLoading] = useState(false);
-
-  // Ajustar o timezone para exibir corretamente
-  const appointmentDate = new Date(appointment.appointment_date);
-  const initialDate = appointmentDate.toISOString().split('T')[0];
-  const initialTime = appointmentDate.toLocaleTimeString('pt-BR', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false
-  });
-
-  const [date, setDate] = useState(initialDate);
-  const [time, setTime] = useState(initialTime);
+  
+  console.log('appointment.appointment_date:', appointment.appointment_date);
+  
+  // Converter a data do formato do banco para o formato do input date
+  const parts = appointment.appointment_date?.split(' ') || [];
+  const dateObj = new Date(parts[0] || '');
+  const formattedDate = dateObj.toISOString().split('T')[0];
+  const formattedTime = parts[1]?.slice(0, 5) || '';
+  
+  const [date, setDate] = useState(formattedDate);
+  const [time, setTime] = useState(formattedTime);
   const [totalValue, setTotalValue] = useState(appointment.total_value || appointment.service?.price || '');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      // Criar data com timezone correto
-      const [hours, minutes] = time.split(':');
-      const newDate = new Date(date);
-      newDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-      
+      // Montar a string completa no formato YYYY-MM-DDTHH:mm:00
+      const dateTimeString = `${date}T${time}:00`;
+      const newDate = new Date(dateTimeString);
+      // Formatar a data no formato do banco (YYYY-MM-DD HH:mm:ss)
+      const formattedDate = `${date} ${time}:00`;
       const updatedAppointment = {
         ...appointment,
         status,
-        appointment_date: newDate.toISOString(),
+        appointment_date: formattedDate,
         ...(status === 'completed' && { total_value: totalValue })
       };
       await onSave(updatedAppointment);
@@ -370,15 +369,14 @@ export default function AppointmentsPage() {
             <tbody>
               {appointments.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-4 text-center text-gray-400">
-                    Nenhum agendamento encontrado para esta data.
-                  </td>
+                  <td colSpan={7} className="py-4 text-center text-gray-400">Nenhum agendamento encontrado para esta data.</td>
                 </tr>
               ) : (
                 appointments.map((appointment) => (
                   <tr key={appointment.id} className="border-b border-gray-700">
                     <td className="py-4">{formatDateTime(appointment.appointment_date)}</td>
-                    <td className="py-4">{appointment.client_name}</td>                    <td className="py-4">{appointment.service?.name}</td>
+                    <td className="py-4">{appointment.client_name}</td>
+                    <td className="py-4">{appointment.service?.name}</td>
                     <td className="py-4">{appointment.service?.duration} min</td>
                     <td className="py-4">R$ {appointment.total_value || appointment.service?.price}</td>
                     <td className="py-4">
@@ -387,20 +385,13 @@ export default function AppointmentsPage() {
                         appointment.status === 'completed' ? 'bg-green-500' :
                         appointment.status === 'canceled' ? 'bg-red-500' :
                         'bg-gray-500'
-                      }`}>
-                        {appointment.status === 'scheduled' ? 'Agendado' :
-                         appointment.status === 'completed' ? 'Concluído' :
-                         appointment.status === 'canceled' ? 'Cancelado' :
-                         appointment.status}
-                      </span>
+                      }`}>{appointment.status === 'scheduled' ? 'Agendado' :
+                        appointment.status === 'completed' ? 'Concluído' :
+                        appointment.status === 'canceled' ? 'Cancelado' :
+                        appointment.status}</span>
                     </td>
                     <td className="py-4">
-                      <button
-                        onClick={() => setEditingAppointment(appointment)}
-                        className="text-sm text-purple-500 hover:text-purple-400"
-                      >
-                        Editar
-                      </button>
+                      <button onClick={() => setEditingAppointment(appointment)} className="text-sm text-purple-500 hover:text-purple-400">Editar</button>
                     </td>
                   </tr>
                 ))
