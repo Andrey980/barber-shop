@@ -24,6 +24,29 @@ export interface Appointment {
   };
 }
 
+// Interfaces para dados financeiros
+export interface MonthlyRevenue {
+  month: string;
+  year: number;
+  total: number;
+}
+
+export interface ServiceRevenue {
+  service_id: string;
+  service_name: string;
+  total_revenue: number;
+  appointment_count: number;
+  percentage: number;
+}
+
+export interface FinancialStats {
+  totalRevenue: number;
+  totalAppointments: number;
+  averageTicket: number;
+  monthlyRevenue: MonthlyRevenue[];
+  serviceRevenues: ServiceRevenue[];
+}
+
 const API_URL = 'http://localhost:8080/api';
 // const API_URL = 'https://barber-shop-backend-production.up.railway.app/api';
 
@@ -193,5 +216,59 @@ export const updateAppointment = async (id: string, appointment: Partial<Appoint
     const apiError = error as ApiError;
     console.error('Error updating appointment:', apiError);
     throw new Error(apiError.message || 'Falha ao atualizar agendamento');
+  }
+};
+
+// Buscar receita mensal
+export const getMonthlyRevenue = async (year?: number, month?: number): Promise<MonthlyRevenue[]> => {
+  try {
+    const currentDate = new Date();
+    const targetYear = year || currentDate.getFullYear();
+    const targetMonth = month || currentDate.getMonth() + 1;
+    
+    const response = await fetch(`${API_URL}/appointments/revenue/monthly?year=${targetYear}&month=${targetMonth}`);
+    if (!response.ok) {
+      throw new Error('Falha ao buscar receita mensal');
+    }
+    return response.json();
+  } catch (error) {
+    console.error('Error fetching monthly revenue:', error);
+    throw error;
+  }
+};
+
+// Buscar receita por serviço
+export const getServiceRevenue = async (year?: number, month?: number): Promise<ServiceRevenue[]> => {
+  try {
+    const currentDate = new Date();
+    const targetYear = year || currentDate.getFullYear();
+    const targetMonth = month || currentDate.getMonth() + 1;
+    
+    const response = await fetch(`${API_URL}/appointments/revenue/services?year=${targetYear}&month=${targetMonth}`);
+    if (!response.ok) {
+      throw new Error('Falha ao buscar receita por serviço');
+    }
+    return response.json();
+  } catch (error) {
+    console.error('Error fetching service revenue:', error);
+    throw error;
+  }
+};
+
+// Buscar estatísticas financeiras completas
+export const getFinancialStats = async (year?: number, month?: number): Promise<FinancialStats> => {
+  try {
+    const currentDate = new Date();
+    const targetYear = year || currentDate.getFullYear();
+    const targetMonth = month || currentDate.getMonth() + 1;
+    
+    const response = await fetch(`${API_URL}/appointments/stats?year=${targetYear}&month=${targetMonth}`);
+    if (!response.ok) {
+      throw new Error('Falha ao buscar estatísticas financeiras');
+    }
+    return response.json();
+  } catch (error) {
+    console.error('Error fetching financial stats:', error);
+    throw error;
   }
 };

@@ -2,7 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { getServices, createService, deleteService, updateService } from '../services/api';
+import { getServices, createService, deleteService, updateService, getFinancialStats, type FinancialStats, type ServiceRevenue, type MonthlyRevenue } from '../services/api';
+import ServiceRevenuePieChart from '../components/ServiceRevenuePieChart';
+import MonthlyRevenueChart from '../components/MonthlyRevenueChart';
 
 interface Service {
   id: string;
@@ -29,10 +31,38 @@ export default function DashboardPage() {
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Estados para dados financeiros
+  const [financialStats, setFinancialStats] = useState<FinancialStats | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [financialLoading, setFinancialLoading] = useState(false);
 
   useEffect(() => {
     fetchServices();
-  }, []);
+    fetchFinancialData();
+  }, [selectedMonth, selectedYear]);
+  const fetchFinancialData = async () => {
+    try {
+      setFinancialLoading(true);
+      const data = await getFinancialStats(selectedYear, selectedMonth);
+      console.log('Financial data received:', data);
+      setFinancialStats(data);
+    } catch (err) {
+      console.error('Error fetching financial data:', err);
+      setError('Falha ao carregar dados financeiros.');
+      // Definir dados padrão em caso de erro
+      setFinancialStats({
+        totalRevenue: 0,
+        totalAppointments: 0,
+        averageTicket: 0,
+        monthlyRevenue: [],
+        serviceRevenues: []
+      });
+    } finally {
+      setFinancialLoading(false);
+    }
+  };
 
   const fetchServices = async () => {
     try {
@@ -226,14 +256,146 @@ export default function DashboardPage() {
             Início
           </Link>
         </div>
-      </header>
-
-      {/* Error Message */}
+      </header>      {/* Error Message */}
       {error && (
         <div className="bg-red-500 text-white p-4 rounded-lg mb-4">
           {error}
         </div>
       )}
+
+      {/* Financial Dashboard */}
+      <div className="bg-gray-800 rounded-lg p-6 mb-8">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-semibold">Painel Financeiro</h2>
+          <div className="flex gap-4">
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(Number(e.target.value))}
+              className="bg-gray-700 text-white px-3 py-2 rounded-lg"
+            >
+              {Array.from({ length: 12 }, (_, i) => (
+                <option key={i + 1} value={i + 1}>
+                  {new Date(0, i).toLocaleString('pt-BR', { month: 'long' })}
+                </option>
+              ))}
+            </select>
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(Number(e.target.value))}
+              className="bg-gray-700 text-white px-3 py-2 rounded-lg"
+            >
+              {Array.from({ length: 5 }, (_, i) => (
+                <option key={i} value={new Date().getFullYear() - i}>
+                  {new Date().getFullYear() - i}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {financialLoading ? (
+          <div className="flex items-center justify-center h-40">
+            <p>Carregando dados financeiros...</p>
+          </div>
+        ) : financialStats ? (
+          <>            {/* Resumo Financeiro */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <div className="bg-gray-700 p-4 rounded-lg">
+                <h3 className="text-gray-400 text-sm">Receita Total</h3>
+                <p className="text-2xl font-bold text-green-400">
+                  R$ {(financialStats.totalRevenue || 0).toFixed(2)}
+                </p>
+              </div>
+              <div className="bg-gray-700 p-4 rounded-lg">
+                <h3 className="text-gray-400 text-sm">Total de Atendimentos</h3>
+                <p className="text-2xl font-bold text-blue-400">
+                  {financialStats.totalAppointments || 0}
+                </p>
+              </div>
+              <div className="bg-gray-700 p-4 rounded-lg">
+                <h3 className="text-gray-400 text-sm">Ticket Médio</h3>
+                <p className="text-2xl font-bold text-purple-400">
+                  R$ {(financialStats.averageTicket || 0).toFixed(2)}
+                </p>
+              </div>
+              <div className="bg-gray-700 p-4 rounded-lg">
+                <h3 className="text-gray-400 text-sm">Período</h3>
+                <p className="text-lg font-semibold text-gray-300">
+                  {new Date(0, selectedMonth - 1).toLocaleString('pt-BR', { month: 'long' })} {selectedYear}
+                </p>
+              </div>
+            </div>
+
+            {/* Gráficos */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              {/* Gráfico de Receita Mensal */}
+              <div className="bg-gray-700 p-4 rounded-lg">
+                <h3 className="text-lg font-semibold mb-4">Receita dos Últimos Meses</h3>
+                {financialStats.monthlyRevenue && financialStats.monthlyRevenue.length > 0 ? (
+                  <MonthlyRevenueChart 
+                    data={financialStats.monthlyRevenue.map(item => ({
+                      month: new Date(0, parseInt(item.month) - 1).toLocaleString('pt-BR', { month: 'short' }),
+                      total: item.total
+                    }))}
+                  />
+                ) : (
+                  <p className="text-gray-400 text-center py-8">Sem dados de receita mensal</p>
+                )}
+              </div>
+
+              {/* Gráfico de Pizza - Receita por Serviço */}
+              <div className="bg-gray-700 p-4 rounded-lg">
+                <h3 className="text-lg font-semibold mb-4">Receita por Serviço</h3>
+                {financialStats.serviceRevenues && financialStats.serviceRevenues.length > 0 ? (
+                  <ServiceRevenuePieChart 
+                    data={financialStats.serviceRevenues.map(service => ({
+                      name: service.service_name,
+                      value: service.total_revenue,
+                      percentage: service.percentage
+                    }))}
+                  />
+                ) : (
+                  <p className="text-gray-400 text-center py-8">Sem dados de receita por serviço</p>
+                )}
+              </div>
+            </div>
+
+            {/* Tabela de Receita por Serviço */}
+            {financialStats.serviceRevenues && financialStats.serviceRevenues.length > 0 && (
+              <div className="bg-gray-700 p-4 rounded-lg">
+                <h3 className="text-lg font-semibold mb-4">Detalhamento por Serviço</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="text-left border-b border-gray-600">
+                        <th className="pb-3">Serviço</th>
+                        <th className="pb-3">Qtd. Atendimentos</th>
+                        <th className="pb-3">Receita Total</th>
+                        <th className="pb-3">% do Total</th>
+                        <th className="pb-3">Ticket Médio</th>
+                      </tr>
+                    </thead>
+                    <tbody>                      {financialStats.serviceRevenues.map((service, index) => (
+                        <tr key={index} className="border-b border-gray-600">
+                          <td className="py-3 font-medium">{service.service_name}</td>
+                          <td className="py-3">{service.appointment_count || 0}</td>
+                          <td className="py-3 text-green-400">R$ {(service.total_revenue || 0).toFixed(2)}</td>
+                          <td className="py-3">{(service.percentage || 0).toFixed(1)}%</td>
+                          <td className="py-3">R$ {((service.total_revenue || 0) / (service.appointment_count || 1)).toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-gray-400">Erro ao carregar dados financeiros</p>
+          </div>
+        )}
+      </div>
 
       {/* Services List */}
       <div className="bg-gray-800 rounded-lg p-6 mb-8">
