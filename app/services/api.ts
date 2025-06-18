@@ -262,11 +262,56 @@ export const getFinancialStats = async (year?: number, month?: number): Promise<
     const targetYear = year || currentDate.getFullYear();
     const targetMonth = month || currentDate.getMonth() + 1;
     
-    const response = await fetch(`${API_URL}/appointments/stats?year=${targetYear}&month=${targetMonth}`);
-    if (!response.ok) {
+    // Buscar as estatísticas básicas
+    const statsResponse = await fetch(`${API_URL}/appointments/stats?year=${targetYear}&month=${targetMonth}`);
+    if (!statsResponse.ok) {
       throw new Error('Falha ao buscar estatísticas financeiras');
     }
-    return response.json();
+    
+    // Buscar receita mensal dos últimos meses
+    const monthlyRevenueResponse = await fetch(`${API_URL}/appointments/revenue/monthly?year=${targetYear}&month=${targetMonth}`);
+    if (!monthlyRevenueResponse.ok) {
+      throw new Error('Falha ao buscar receita mensal');
+    }
+    
+    // Buscar receita por serviço
+    const serviceRevenueResponse = await fetch(`${API_URL}/appointments/revenue/services?year=${targetYear}&month=${targetMonth}`);
+    if (!serviceRevenueResponse.ok) {
+      throw new Error('Falha ao buscar receita por serviço');
+    }
+    
+    // Processar os dados
+    const statsData = await statsResponse.json();
+    let monthlyRevenue: MonthlyRevenue[] = [];
+    try {
+      monthlyRevenue = await monthlyRevenueResponse.json();
+    } catch (e) {
+      console.error('Erro ao processar dados de receita mensal:', e);
+    }
+    
+    let serviceRevenues: ServiceRevenue[] = [];
+    try {
+      serviceRevenues = await serviceRevenueResponse.json();
+    } catch (e) {
+      console.error('Erro ao processar dados de receita por serviço:', e);
+    }
+    
+    // Calcular receita total a partir dos dados de serviço, caso não venha da API
+    let totalRevenue = 0;
+    if (serviceRevenues && serviceRevenues.length > 0) {
+      totalRevenue = serviceRevenues.reduce((sum, service) => sum + (service.total_revenue || 0), 0);
+    }
+    
+    console.log('API Stats Response:', statsData);
+    
+    // Transformar os dados para o formato esperado pelo frontend
+    return {
+      totalRevenue: totalRevenue,
+      totalAppointments: statsData.total_appointments || 0,
+      averageTicket: statsData.average_value || 0,
+      monthlyRevenue: monthlyRevenue || [],
+      serviceRevenues: serviceRevenues || []
+    };
   } catch (error) {
     console.error('Error fetching financial stats:', error);
     throw error;

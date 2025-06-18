@@ -299,23 +299,22 @@ export default function DashboardPage() {
           </div>
         ) : financialStats ? (
           <>            {/* Resumo Financeiro */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-              <div className="bg-gray-700 p-4 rounded-lg">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">              <div className="bg-gray-700 p-4 rounded-lg">
                 <h3 className="text-gray-400 text-sm">Receita Total</h3>
                 <p className="text-2xl font-bold text-green-400">
-                  R$ {(financialStats.totalRevenue || 0).toFixed(2)}
+                  R$ {(typeof financialStats.totalRevenue === 'number' ? financialStats.totalRevenue : 0).toFixed(2)}
                 </p>
               </div>
               <div className="bg-gray-700 p-4 rounded-lg">
                 <h3 className="text-gray-400 text-sm">Total de Atendimentos</h3>
                 <p className="text-2xl font-bold text-blue-400">
-                  {financialStats.totalAppointments || 0}
+                  {typeof financialStats.totalAppointments === 'number' ? financialStats.totalAppointments : 0}
                 </p>
               </div>
               <div className="bg-gray-700 p-4 rounded-lg">
                 <h3 className="text-gray-400 text-sm">Ticket Médio</h3>
                 <p className="text-2xl font-bold text-purple-400">
-                  R$ {(financialStats.averageTicket || 0).toFixed(2)}
+                  R$ {(typeof financialStats.averageTicket === 'number' ? financialStats.averageTicket : 0).toFixed(2)}
                 </p>
               </div>
               <div className="bg-gray-700 p-4 rounded-lg">
@@ -330,12 +329,11 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
               {/* Gráfico de Receita Mensal */}
               <div className="bg-gray-700 p-4 rounded-lg">
-                <h3 className="text-lg font-semibold mb-4">Receita dos Últimos Meses</h3>
-                {financialStats.monthlyRevenue && financialStats.monthlyRevenue.length > 0 ? (
+                <h3 className="text-lg font-semibold mb-4">Receita dos Últimos Meses</h3>                {financialStats.monthlyRevenue && Array.isArray(financialStats.monthlyRevenue) && financialStats.monthlyRevenue.length > 0 ? (
                   <MonthlyRevenueChart 
                     data={financialStats.monthlyRevenue.map(item => ({
-                      month: new Date(0, parseInt(item.month) - 1).toLocaleString('pt-BR', { month: 'short' }),
-                      total: item.total
+                      month: item.month ? new Date(0, parseInt(item.month) - 1).toLocaleString('pt-BR', { month: 'short' }) : 'Desconhecido',
+                      total: item.total || 0
                     }))}
                   />
                 ) : (
@@ -345,13 +343,12 @@ export default function DashboardPage() {
 
               {/* Gráfico de Pizza - Receita por Serviço */}
               <div className="bg-gray-700 p-4 rounded-lg">
-                <h3 className="text-lg font-semibold mb-4">Receita por Serviço</h3>
-                {financialStats.serviceRevenues && financialStats.serviceRevenues.length > 0 ? (
+                <h3 className="text-lg font-semibold mb-4">Receita por Serviço</h3>                {financialStats.serviceRevenues && Array.isArray(financialStats.serviceRevenues) && financialStats.serviceRevenues.length > 0 ? (
                   <ServiceRevenuePieChart 
                     data={financialStats.serviceRevenues.map(service => ({
-                      name: service.service_name,
-                      value: service.total_revenue,
-                      percentage: service.percentage
+                      name: service.service_name || 'Serviço sem nome',
+                      value: service.total_revenue || 0,
+                      percentage: service.percentage || 0
                     }))}
                   />
                 ) : (
@@ -361,7 +358,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Tabela de Receita por Serviço */}
-            {financialStats.serviceRevenues && financialStats.serviceRevenues.length > 0 && (
+            {financialStats.serviceRevenues && Array.isArray(financialStats.serviceRevenues) && financialStats.serviceRevenues.length > 0 && (
               <div className="bg-gray-700 p-4 rounded-lg">
                 <h3 className="text-lg font-semibold mb-4">Detalhamento por Serviço</h3>
                 <div className="overflow-x-auto">
@@ -377,11 +374,11 @@ export default function DashboardPage() {
                     </thead>
                     <tbody>                      {financialStats.serviceRevenues.map((service, index) => (
                         <tr key={index} className="border-b border-gray-600">
-                          <td className="py-3 font-medium">{service.service_name}</td>
+                          <td className="py-3 font-medium">{service.service_name || 'Serviço sem nome'}</td>
                           <td className="py-3">{service.appointment_count || 0}</td>
                           <td className="py-3 text-green-400">R$ {(service.total_revenue || 0).toFixed(2)}</td>
                           <td className="py-3">{(service.percentage || 0).toFixed(1)}%</td>
-                          <td className="py-3">R$ {((service.total_revenue || 0) / (service.appointment_count || 1)).toFixed(2)}</td>
+                          <td className="py-3">R$ {(service.appointment_count ? (service.total_revenue || 0) / service.appointment_count : 0).toFixed(2)}</td>
                         </tr>
                       ))}
                     </tbody>

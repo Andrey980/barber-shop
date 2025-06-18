@@ -22,12 +22,11 @@ interface MonthlyRevenueChartProps {
 
 const MonthlyRevenueChart: React.FC<MonthlyRevenueChartProps> = ({ data }) => {
   const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
+    if (active && payload && payload.length) {      return (
         <div className="bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-700">
           <p className="text-white font-medium">{`Mês: ${label}`}</p>
           <p className="text-green-400">
-            {`Receita: R$ ${payload[0].value.toFixed(2)}`}
+            {`Receita: R$ ${(payload[0].value || 0).toFixed(2)}`}
           </p>
         </div>
       );
